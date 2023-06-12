@@ -61,9 +61,9 @@ def grid_imgs(imgs, num_cols=8):
 
 
 # @profile
-def normalize(img,
-              mean: List[float] = [0., 0., 0.],
-              std: List[float] = [1., 1., 1.]):
+def img_normalize(img,
+                  mean: List[float] = [0., 0., 0.],
+                  std: List[float] = [1., 1., 1.]):
     img = img.astype(np.float32)
     mean = np.array(mean, dtype=np.float32)
     std = np.array(std, dtype=np.float32)
@@ -76,9 +76,9 @@ def normalize(img,
     return img
 
 
-def denormalize(img,
-                mean: List[float] = [0., 0., 0.],
-                std: List[float] = [1., 1., 1.]):
+def img_denormalize(img,
+                    mean: List[float] = [0., 0., 0.],
+                    std: List[float] = [1., 1., 1.]):
     mean = np.array(mean)
     std = np.array(std)
     assert mean.shape[0] == img.shape[-1]
