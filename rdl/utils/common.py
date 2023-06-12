@@ -12,6 +12,12 @@ import textwrap
 from rlogger import RLogger
 
 
+def set_all_seed(seed=0):
+    random.seed(0)
+    np.random.seed(0)
+    torch.manual_seed(0)
+
+
 def bgr2rgb(imgs: np.ndarray):
     """Convert np.ndarray bgr2rgb
 
