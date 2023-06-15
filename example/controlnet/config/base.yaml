@@ -40,12 +40,12 @@ optimizer:
   kwargs:
     betas: [0.9, 0.999]
     weight_decay: 0.01
-    eps: 1e-08
+    eps: 5e-6
 gpu:
   enable: true
   devices: "0"
 accelerate:
-  enable: false
+  enable: true
   kwargs:
     gradient_accumulation_steps: 10
     mixed_precision: fp16

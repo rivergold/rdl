@@ -33,15 +33,21 @@ class MultiModelTrainer(TrainerBase):
     def build_hooks(self):
         raise NotImplementedError
 
-    def set_model(self, model_name, model, cuda_id: Union[int, None] = 0):
+    def set_model(self,
+                  model_name,
+                  model,
+                  cuda_id: Union[int, None] = 0,
+                  enable_accelerate_prepare=False):
         self.model[model_name] = model
         if torch.cuda.is_available() and cuda_id is not None:
             if not self.cfg.accelerate.enable:
                 self.model[model_name].to(device=f"cuda:{cuda_id}")
             else:
-                self.model[model_name] = self.accelerator.prepare(
-                    self.model[model_name])
-            # TODO: distributed gpu
+                if enable_accelerate_prepare:
+                    self.model[model_name] = self.accelerator.prepare(
+                        self.model[model_name])
+                else:
+                    self.model[model_name].to(self.accelerator.device)
 
     def set_train_dataloder(self, train_dataloder):
         self.train_dataloader = train_dataloder

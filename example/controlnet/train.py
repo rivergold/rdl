@@ -81,10 +81,15 @@ class ControlnetTrainer(MultiModelTrainer):
             self.optimizer.zero_grad()
             if self.cfg.accelerate.enable:
                 self.accelerator.backward(loss)
+                # print(f"sync_gradients: {self.accelerator.sync_gradients}")
+                if self.accelerator.sync_gradients:
+                    params_to_clip = self.model['controlnet'].parameters()
+                    self.accelerator.clip_grad_norm_(params_to_clip, 5)
             else:
                 loss.backward()
+
             self.optimizer.step()
-            print(f"loss: {loss}")
+            # print(f"loss: {loss}")
 
 
 def build_trainer(cfg):
@@ -132,7 +137,10 @@ def build_trainer(cfg):
     trainer.set_model('text_encoder', text_encoder, cuda_id=0)
     trainer.set_model('vae', vae, cuda_id=0)
     trainer.set_model('unet', unet, cuda_id=0)
-    trainer.set_model('controlnet', controlnet, cuda_id=0)
+    trainer.set_model('controlnet',
+                      controlnet,
+                      cuda_id=0,
+                      enable_accelerate_prepare=True)
     trainer.set_model('noise_scheduler', noise_scheduler, cuda_id=None)
 
     # Criterion
@@ -179,10 +187,11 @@ def build_trainer(cfg):
                                step_period=cfg.vis.visualzation_step_period,
                                color_mode='rgb'),
         # Checkpoint save hook
-        # hook.SaveCheckpointHook(
-        #     base_out_dir=cfg.work_dir,
-        #     exp_name=cfg.exp_name,
-        #     epoch_period=cfg.vis.save_checkpoint_epoch_period),
+        hook.SaveCheckpointHook(
+            base_out_dir=cfg.work_dir,
+            exp_name=cfg.exp_name,
+            epoch_period=cfg.vis.save_checkpoint_epoch_period,
+            enable_accelerate=cfg.accelerate.enable),
     ]
     trainer.register_hooks(hooks)
 

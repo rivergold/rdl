@@ -88,28 +88,45 @@ class LoadPretrainedCheckpointHook(HookBase):
 
 
 class SaveCheckpointHook(HookBase):
-    def __init__(self, base_out_dir='./out', exp_name='exp', epoch_period=1):
+    def __init__(self,
+                 base_out_dir='./out',
+                 exp_name='exp',
+                 epoch_period=1,
+                 enable_accelerate=False):
         self.epoch_period = epoch_period
         self.out_dir = Path(base_out_dir).resolve() / exp_name / 'checkpoint'
         self.out_dir.mkdir(parents=True, exist_ok=True)
+        self.enable_accelerate = enable_accelerate
+
+    def _pytorch_save(self):
+        checkpoint = {}
+        # Step
+        checkpoint['epoch'] = self.trainer.epoch
+        checkpoint['step'] = self.trainer.step
+        # Model
+        checkpoint['model'] = self.trainer.model.state_dict()
+        # Optimizer
+        checkpoint['optimizer'] = self.trainer.optimizer.state_dict()
+        # # Lr scheduler
+        # if hasattr(self.trainer, 'lr_scheduler'):
+        #     checkpoint[
+        #         'lr_scheduler'] = self.trainer.lr_scheduler.state_dict()
+
+        checkpoint_path = self.out_dir / f"epoch_{self.trainer.epoch}-step_{self.trainer.step}.pth"
+        torch.save(checkpoint, checkpoint_path.as_posix())
+
+    def _accelerate_save(self):
+        if self.trainer.accelerator.sync_gradients:
+            if self.trainer.accelerator.is_main_process:
+                checkpoint_dir = self.out_dir / f"epoch_{self.trainer.epoch}-step_{self.trainer.step}"
+                self.trainer.accelerator.save_state(checkpoint_dir)
 
     def after_epoch(self):
         if self.trainer.epoch > 0 and self.trainer.epoch % self.epoch_period == 0:
-            checkpoint = {}
-            # Step
-            checkpoint['epoch'] = self.trainer.epoch
-            checkpoint['step'] = self.trainer.step
-            # Model
-            checkpoint['model'] = self.trainer.model.state_dict()
-            # Optimizer
-            checkpoint['optimizer'] = self.trainer.optimizer.state_dict()
-            # # Lr scheduler
-            # if hasattr(self.trainer, 'lr_scheduler'):
-            #     checkpoint[
-            #         'lr_scheduler'] = self.trainer.lr_scheduler.state_dict()
-
-            checkpoint_path = self.out_dir / f"epoch_{self.trainer.epoch}-step_{self.trainer.step}.pth"
-            torch.save(checkpoint, checkpoint_path.as_posix())
+            if self.enable_accelerate:
+                self._accelerate_save()
+            else:
+                self._pytorch_save()
 
     def after_train(self):
         for dataset_type, metric_info in self.trainer.best_eval_metric_map.items(
