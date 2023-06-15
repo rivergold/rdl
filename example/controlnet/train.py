@@ -1,10 +1,12 @@
 from argparse import ArgumentParser
+from contextlib import nullcontext
 import torch
 import diffusers
 from diffusers import (AutoencoderKL, UNet2DConditionModel, ControlNetModel,
                        DDPMScheduler)
 from transformers import AutoTokenizer, CLIPTextModel
 from omegaconf import OmegaConf
+from accelerate import Accelerator
 from rdl.engine import hook, event
 from rdl.engine.trainer import MultiModelTrainer
 from rdl.utils.common import set_all_seed
@@ -21,69 +23,68 @@ class ControlnetTrainer(MultiModelTrainer):
         pass
 
     def run_step(self, batch_sample):
-        print('------')
-        print(self.step)
-        print('------')
-        print(batch_sample.keys())
+        with self.accelerator.accumulate(
+                self.model['controlnet']
+        ) if self.cfg.accelerate.enable else nullcontext() as gs:
+            batch_rgb_img = batch_sample['batch_rgb_img'].cuda()
+            batch_condition_rgb_img = batch_sample[
+                'batch_condition_rgb_img'].cuda()
+            batch_token_ids = batch_sample['batch_token_ids'].cuda()
 
-        batch_rgb_img = batch_sample['batch_rgb_img'].cuda()
-        batch_condition_rgb_img = batch_sample['batch_condition_rgb_img'].cuda(
-        )
-        batch_token_ids = batch_sample['batch_token_ids'].cuda()
-        print(f"batch_token_ids: {batch_token_ids.shape}")
+            # Latent
+            batch_latent = self.model['vae'].encode(
+                batch_rgb_img).latent_dist.sample()
+            batch_size = batch_latent.shape[0]
+            batch_latent = batch_latent * self.model[
+                'vae'].config.scaling_factor
 
-        # Latent
-        batch_latent = self.model['vae'].encode(
-            batch_rgb_img).latent_dist.sample()
-        batch_size = batch_latent.shape[0]
-        print(batch_latent.shape)
+            # Noise
+            batch_noise = torch.randn_like(batch_latent)
 
-        batch_latent = batch_latent * self.model['vae'].config.scaling_factor
+            # Timestep
+            batch_timestep = torch.randint(
+                0,
+                self.model['noise_scheduler'].config.num_train_timesteps,
+                (batch_size, ),
+                device=batch_latent.device)
+            batch_timestep = batch_timestep.long()
 
-        batch_noise = torch.randn_like(batch_latent)
+            # Add noise
+            batch_noisy_latent = self.model['noise_scheduler'].add_noise(
+                batch_latent, batch_noise, batch_timestep)
 
-        # Timestep
-        batch_timestep = torch.randint(
-            0,
-            self.model['noise_scheduler'].config.num_train_timesteps,
-            (batch_size, ),
-            device=batch_latent.device)
-        batch_timestep = batch_timestep.long()
+            # Text embedding
+            batch_text_embedding = self.model['text_encoder'](
+                batch_token_ids)[0]
 
-        # Add noise
-        batch_noisy_latent = self.model['noise_scheduler'].add_noise(
-            batch_latent, batch_noise, batch_timestep)
+            batch_down_block_x, batch_mid_block_x = self.model['controlnet'](
+                batch_noisy_latent,
+                batch_timestep,
+                encoder_hidden_states=batch_text_embedding,
+                controlnet_cond=batch_condition_rgb_img,
+                return_dict=False,
+            )
 
-        # Text embedding
-        batch_text_embedding = self.model['text_encoder'](batch_token_ids)[0]
+            # Predict noise
+            batch_pred_noise = self.model['unet'](
+                batch_noisy_latent,
+                batch_timestep,
+                encoder_hidden_states=batch_text_embedding,
+                down_block_additional_residuals=[
+                    each_x for each_x in batch_down_block_x
+                ],
+                mid_block_additional_residual=batch_mid_block_x).sample
 
-        batch_down_block_x, batch_mid_block_x = self.model['controlnet'](
-            batch_noisy_latent,
-            batch_timestep,
-            encoder_hidden_states=batch_text_embedding,
-            controlnet_cond=batch_condition_rgb_img,
-            return_dict=False,
-        )
+            target = batch_noise
 
-        # Predict noise
-        batch_pred_noise = self.model['unet'](
-            batch_noisy_latent,
-            batch_timestep,
-            encoder_hidden_states=batch_text_embedding,
-            down_block_additional_residuals=[
-                each_x for each_x in batch_down_block_x
-            ],
-            mid_block_additional_residual=batch_mid_block_x).sample
-
-        target = batch_pred_noise
-
-        loss = self.criterion(batch_pred_noise, target)
-
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
-
-        print(loss)
+            loss = self.criterion(batch_pred_noise, target)
+            self.optimizer.zero_grad()
+            if self.cfg.accelerate.enable:
+                self.accelerator.backward(loss)
+            else:
+                loss.backward()
+            self.optimizer.step()
+            print(f"loss: {loss}")
 
 
 def build_trainer(cfg):
@@ -91,6 +92,13 @@ def build_trainer(cfg):
 
     # Trainer
     trainer = ControlnetTrainer(cfg)
+
+    # Accelerator
+    if cfg.accelerate.enable:
+        accelerator = Accelerator(log_with='tensorboard',
+                                  logging_dir=cfg.work_dir,
+                                  **cfg.accelerate.kwargs)
+        trainer.set_accelerator(accelerator)
 
     # Dataloader
     tokenizer = AutoTokenizer.from_pretrained(

@@ -36,12 +36,17 @@ class MultiModelTrainer(TrainerBase):
     def set_model(self, model_name, model, cuda_id: Union[int, None] = 0):
         self.model[model_name] = model
         if torch.cuda.is_available() and cuda_id is not None:
-            if not self.cfg.train.enable_accelerate:
+            if not self.cfg.accelerate.enable:
                 self.model[model_name].to(device=f"cuda:{cuda_id}")
+            else:
+                self.model[model_name] = self.accelerator.prepare(
+                    self.model[model_name])
             # TODO: distributed gpu
 
     def set_train_dataloder(self, train_dataloder):
         self.train_dataloader = train_dataloder
+        if self.cfg.accelerate.enable:
+            self.train_dataloader = self.accelerator.prepare(train_dataloder)
         self.num_epoch_step = len(self.train_dataloader)
         # self.train_dataloader_iter = iter(train_dataloder)
 
@@ -62,9 +67,16 @@ class MultiModelTrainer(TrainerBase):
 
     def set_optimizer(self, optimizer):
         self.optimizer = optimizer
+        if self.cfg.accelerate.enable:
+            self.optimizer = self.accelerator.prepare(optimizer)
 
     def set_lr_scheduler(self, lr_scheduler):
         self.lr_scheduler = lr_scheduler
+        if self.cfg.accelerate.enable:
+            self.lr_scheduler = self.accelerator.prepare(lr_scheduler)
+
+    def set_accelerator(self, accelerator):
+        self.accelerator = accelerator
 
     def run_step(self, batch_sample):
         raise NotImplementedError

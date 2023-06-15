@@ -35,8 +35,6 @@ train:
   lr: 5e-4
   pretrained_checkpoint: null
   resume_from: null
-  enable_accelerate: false
-  enable_ddp: false
 optimizer:
   type: "AdamW"
   kwargs:
@@ -46,6 +44,11 @@ optimizer:
 gpu:
   enable: true
   devices: "0"
+accelerate:
+  enable: false
+  kwargs:
+    gradient_accumulation_steps: 10
+    mixed_precision: fp16
 vis:
   log_step_period: 0
   tensorboard_step_period: 1000

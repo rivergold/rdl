@@ -17,6 +17,7 @@ class TrainerBase(object):
         self.is_last_batch = False
         self.is_resume = False
         self.best_eval_metric_map = {'val': None, 'test': None}
+        self.accelerator = None
 
     def register_hooks(self, hooks):
         for hook in hooks:
