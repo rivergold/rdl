@@ -15,7 +15,7 @@ def common_collate_fn(in_batch, **kwargs):
 
     # Init out_batch
     for k in keys:
-        out_batch[f'{k}s'] = []
+        out_batch[f'batch_{k}'] = []
 
     # Feed data
     for _, sample in enumerate(in_batch):
@@ -24,22 +24,24 @@ def common_collate_fn(in_batch, **kwargs):
                 continue
             if v is not None:
                 #print(k)
-                out_batch[f'{k}s'].append(v)
+                out_batch[f'batch_{k}'].append(v)
     # Stack data
     #ks = ['rgb_imgs', 'gray_imgs', 'head_pose_gts']
     # ks = ['rgb_imgs', 'gray_imgs', 'head_pose_gts', 'head_pose_cls_gts']
     for k in keys:
-        if len(out_batch[f"{k}s"]):
-            first_element = out_batch[f"{k}s"][0]
+        if len(out_batch[f"batch_{k}"]):
+            first_element = out_batch[f"batch_{k}"][0]
             if isinstance(first_element, int):
-                out_batch[f"{k}s"] = torch.tensor(out_batch[f"{k}s"])
+                out_batch[f"batch_{k}"] = torch.tensor(out_batch[f"batch_{k}"])
             elif isinstance(first_element, torch.Tensor):
                 if first_element.dim() > 1:
-                    out_batch[f"{k}s"] = torch.stack(out_batch[f"{k}s"], dim=0)
+                    out_batch[f"batch_{k}"] = torch.stack(
+                        out_batch[f"batch_{k}"], dim=0)
                 else:
-                    out_batch[f"{k}s"] = torch.tensor(out_batch[f"{k}s"])
+                    out_batch[f"batch_{k}"] = torch.tensor(
+                        out_batch[f"batch_{k}"])
         else:
-            raise ValueError(f'{out_batch[f"{k}s"]} length is 0.')
+            raise ValueError(f'{out_batch[f"batch_{k}"]} length is 0.')
 
     # out_batch['face_gts'] = torch.cat(out_batch['face_gts'], dim=0)
 
