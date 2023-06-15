@@ -1,0 +1,53 @@
+exp_name: controlnet
+work_dir: "./tmp"
+dataset:
+  train:
+    cache_dir: "/home/hejing/data/opensource/huggingface/data"
+    kwargs:
+      batch_size: 1
+      num_workers: 2
+model:
+  Tokenizer:
+    type: "transformers.AutoTokenizer"
+    model_card_name: "runwayml/stable-diffusion-v1-5"
+    kwargs:
+      cache_dir: "/home/hejing/data/opensource/huggingface/hub"
+  TextEncoder:
+    type: "transformers.CLIPTextModel"
+    model_card_name: "runwayml/stable-diffusion-v1-5"
+    kwargs:
+      cache_dir: "/home/hejing/data/opensource/huggingface/hub"
+  AutoencoderKL:
+    type: "diffusers.AutoencoderKL"
+    model_card_name: "runwayml/stable-diffusion-v1-5"
+    kwargs:
+      cache_dir: "/home/hejing/data/opensource/huggingface/hub"
+  Unet:
+    type: "diffusers.UNet2DConditionModel"
+    model_card_name: "runwayml/stable-diffusion-v1-5"
+    kwargs:
+      cache_dir: "/home/hejing/data/opensource/huggingface/hub"
+  NoiseScheduler:
+    type: "diffusers.DDPMScheduler"
+    model_card_name: "runwayml/stable-diffusion-v1-5"
+train:
+  max_epoch: 500
+  lr: 5e-4
+  pretrained_checkpoint: null
+  resume_from: null
+  enable_accelerate: false
+  enable_ddp: false
+optimizer:
+  type: "AdamW"
+  kwargs:
+    betas: [0.9, 0.999]
+    weight_decay: 0.01
+    eps: 1e-08
+gpu:
+  enable: true
+  devices: "0"
+vis:
+  log_step_period: 0
+  tensorboard_step_period: 1000
+  visualzation_step_period: 2500
+  save_checkpoint_epoch_period: 1
