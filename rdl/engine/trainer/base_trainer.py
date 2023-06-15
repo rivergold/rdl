@@ -67,8 +67,10 @@ class TrainerBase(object):
             # Loop
             for self.epoch in tqdm(range(self.max_epoch), desc='train-epoch'):
                 self.before_epoch()
-                for step in tqdm(range(self.num_epoch_step),
-                                 desc='train-step'):
+                # for step in tqdm(range(self.num_epoch_step),
+                #                  desc='train-step'):
+                for step, batch_sample in enumerate(tqdm(
+                        self.train_dataloader)):
                     if step == self.num_epoch_step - 1:
                         self.is_last_batch = True
                     else:
@@ -77,7 +79,7 @@ class TrainerBase(object):
                     start_time = time.time()
                     self.update_event_storage({'step': ('step', self.step)})
                     self.before_step()
-                    self.run_step()
+                    self.run_step(batch_sample)
                     self.update_event_storage({
                         'train_step_time': ('scalar', time.time() - start_time)
                     })
@@ -115,7 +117,7 @@ class TrainerBase(object):
         for hook in self._hooks:
             hook.after_epoch()
 
-    def run_step(self):
+    def run_step(self, batch_sample):
         raise NotImplementedError
 
     def run_val(self):
@@ -142,5 +144,3 @@ class TrainerBase(object):
                 self.event_storge.set_info(name, data)
             else:
                 raise NotImplementedError()
-
-
