@@ -31,8 +31,8 @@ model:
     type: "diffusers.DDPMScheduler"
     model_card_name: "runwayml/stable-diffusion-v1-5"
 train:
-  max_epoch: 500
-  lr: 5e-4
+  max_epoch: 100
+  lr: 5e-6
   pretrained_checkpoint: null
   resume_from: null
 optimizer:
@@ -40,7 +40,7 @@ optimizer:
   kwargs:
     betas: [0.9, 0.999]
     weight_decay: 0.01
-    eps: 5e-6
+    eps: 1e-8
 gpu:
   enable: true
   devices: "0"
@@ -53,4 +53,4 @@ vis:
   log_step_period: 0
   tensorboard_step_period: 1000
   visualzation_step_period: 2500
-  save_checkpoint_epoch_period: 1
+  save_checkpoint_epoch_period: 5

@@ -66,12 +66,19 @@ class TrainerBase(object):
             #     self.event_storge.clear()
 
             # Loop
-            for self.epoch in tqdm(range(self.max_epoch), desc='train-epoch'):
+            # for self.epoch in tqdm(range(self.max_epoch),
+            #                        desc='train-epoch',
+            #                        position=0):
+            for self.epoch in range(self.max_epoch):
                 self.before_epoch()
                 # for step in tqdm(range(self.num_epoch_step),
                 #                  desc='train-step'):
-                for step, batch_sample in enumerate(tqdm(
-                        self.train_dataloader)):
+                for step, batch_sample in enumerate(
+                        tqdm(self.train_dataloader,
+                             position=0,
+                             desc=f"{self.epoch} / {self.max_epoch}",
+                             colour='green',
+                             ascii=' >=')):
                     if step == self.num_epoch_step - 1:
                         self.is_last_batch = True
                     else:
