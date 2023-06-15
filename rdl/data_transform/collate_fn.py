@@ -34,8 +34,11 @@ def common_collate_fn(in_batch, **kwargs):
             if isinstance(first_element, int):
                 out_batch[f"batch_{k}"] = torch.tensor(out_batch[f"batch_{k}"])
             elif isinstance(first_element, torch.Tensor):
-                if first_element.dim() > 1:
+                if first_element.dim() > 2:  # Image into batch
                     out_batch[f"batch_{k}"] = torch.stack(
+                        out_batch[f"batch_{k}"], dim=0)
+                elif first_element.dim() == 2:  # Text into batch
+                    out_batch[f"batch_{k}"] = torch.cat(
                         out_batch[f"batch_{k}"], dim=0)
                 else:
                     out_batch[f"batch_{k}"] = torch.tensor(
