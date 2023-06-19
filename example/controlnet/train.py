@@ -105,13 +105,17 @@ def build_trainer(cfg):
         accelerator = Accelerator(log_with='tensorboard',
                                   project_dir=cfg.work_dir,
                                   **cfg.accelerate.kwargs)
+
+        accelerator.print(f"{AcceleratorState()}")
+        accelerator.print(f"{AcceleratorState().deepspeed_plugin}")
+        if AcceleratorState().deepspeed_plugin is not None:
+            AcceleratorState().deepspeed_plugin.deepspeed_config[
+                'train_micro_batch_size_per_gpu'] = cfg.dataset.train.kwargs.batch_size
         accelerator.print(f"{AcceleratorState()}")
         # accelerator.print(f"{AcceleratorState().ds_config}")
         # print(dir(AcceleratorState()))
         # print(AcceleratorState().distributed_type)
         # sys.exit(0)
-        # AcceleratorState(
-        # ).deepspeed_plugin.deepspeed_config['train_micro_batch_size_per_gpu']
         trainer.set_accelerator(accelerator)
 
     # Dataloader

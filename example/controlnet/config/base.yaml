@@ -2,36 +2,36 @@ exp_name: controlnet
 work_dir: "./tmp"
 dataset:
   train:
-    cache_dir: "/mnt/opensource/huggingface/data/fusing-fill50k"
+    cache_dir: "/home/hejing/data/opensource/huggingface/data/fusing-fill50k"
     kwargs:
       batch_size: 1
-      num_workers: 2
+      num_workers: 1
 model:
   Tokenizer:
     type: "transformers.AutoTokenizer"
     model_card_name: "runwayml/stable-diffusion-v1-5"
     kwargs:
-      cache_dir: "/mnt/opensource/huggingface/hub"
+      cache_dir: "/home/hejing/data/opensource/huggingface/hub"
   TextEncoder:
     type: "transformers.CLIPTextModel"
     model_card_name: "runwayml/stable-diffusion-v1-5"
     kwargs:
-      cache_dir: "/mnt/opensource/huggingface/hub"
+      cache_dir: "/home/hejing/data/opensource/huggingface/hub"
   AutoencoderKL:
     type: "diffusers.AutoencoderKL"
     model_card_name: "runwayml/stable-diffusion-v1-5"
     kwargs:
-      cache_dir: "/mnt/opensource/huggingface/hub"
+      cache_dir: "/home/hejing/data/opensource/huggingface/hub"
   Unet:
     type: "diffusers.UNet2DConditionModel"
     model_card_name: "runwayml/stable-diffusion-v1-5"
     kwargs:
-      cache_dir: "/mnt/opensource/huggingface/hub"
+      cache_dir: "/home/hejing/data/opensource/huggingface/hub"
   NoiseScheduler:
     type: "diffusers.DDPMScheduler"
     model_card_name: "runwayml/stable-diffusion-v1-5"
     kwargs:
-      cache_dir: "/mnt/opensource/huggingface/hub"
+      cache_dir: "/home/hejing/data/opensource/huggingface/hub"
 train:
   max_epoch: 100
   lr: 5e-6
@@ -50,8 +50,8 @@ accelerate:
   enable: true
   enable_deepspeed: false
   kwargs:
-    gradient_accumulation_steps: 10
-    mixed_precision: fp16
+    gradient_accumulation_steps: 2
+    mixed_precision: 'no'
 vis:
   log_step_period: 0
   tensorboard_step_period: 1000
