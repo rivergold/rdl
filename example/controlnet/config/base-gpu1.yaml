@@ -4,8 +4,8 @@ dataset:
   train:
     cache_dir: "/mnt/opensource/huggingface/data/fusing-fill50k"
     kwargs:
-      batch_size: 1
-      num_workers: 2
+      batch_size: 6
+      num_workers: 4
 model:
   Tokenizer:
     type: "transformers.AutoTokenizer"
@@ -45,13 +45,11 @@ optimizer:
     eps: 1e-8
 gpu:
   enable: true
-  devices: "5"
+  devices: "0"
 accelerate:
   enable: true
-  enable_deepspeed: false
   kwargs:
-    gradient_accumulation_steps: 10
-    mixed_precision: fp16
+    gradient_accumulation_steps: 1
 vis:
   log_step_period: 0
   tensorboard_step_period: 1000

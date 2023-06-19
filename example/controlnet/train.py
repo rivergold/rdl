@@ -7,12 +7,14 @@ from diffusers import (AutoencoderKL, UNet2DConditionModel, ControlNetModel,
 from transformers import AutoTokenizer, CLIPTextModel
 from omegaconf import OmegaConf
 from accelerate import Accelerator
+from accelerate.state import AcceleratorState
 from rdl.engine import hook, event
 from rdl.engine.trainer import MultiModelTrainer
 from rdl.utils.common import set_all_seed
 from rdl.optimization.lr_scheduler import build_lr_scheduler
 #
 from dataset import build_train_dataloader
+import sys
 
 
 class ControlnetTrainer(MultiModelTrainer):
@@ -101,8 +103,15 @@ def build_trainer(cfg):
     # Accelerator
     if cfg.accelerate.enable:
         accelerator = Accelerator(log_with='tensorboard',
-                                  logging_dir=cfg.work_dir,
+                                  project_dir=cfg.work_dir,
                                   **cfg.accelerate.kwargs)
+        accelerator.print(f"{AcceleratorState()}")
+        # accelerator.print(f"{AcceleratorState().ds_config}")
+        # print(dir(AcceleratorState()))
+        # print(AcceleratorState().distributed_type)
+        # sys.exit(0)
+        # AcceleratorState(
+        # ).deepspeed_plugin.deepspeed_config['train_micro_batch_size_per_gpu']
         trainer.set_accelerator(accelerator)
 
     # Dataloader
@@ -112,7 +121,6 @@ def build_trainer(cfg):
         use_fast=False,
         **cfg.model.Tokenizer.kwargs)
     train_dataloader = build_train_dataloader(cfg, tokenizer)
-    trainer.set_train_dataloder(train_dataloader)
 
     # Model
     text_encoder = CLIPTextModel.from_pretrained(
@@ -128,20 +136,13 @@ def build_trainer(cfg):
                                                 **cfg.model.Unet.kwargs)
     controlnet = ControlNetModel.from_unet(unet)
     noise_scheduler = DDPMScheduler.from_pretrained(
-        cfg.model.NoiseScheduler.model_card_name, subfolder='scheduler')
+        cfg.model.NoiseScheduler.model_card_name,
+        subfolder='scheduler',
+        **cfg.model.NoiseScheduler.kwargs)
 
     text_encoder.requires_grad_(False)
     vae.requires_grad_(False)
     unet.requires_grad_(False)
-
-    trainer.set_model('text_encoder', text_encoder, cuda_id=0)
-    trainer.set_model('vae', vae, cuda_id=0)
-    trainer.set_model('unet', unet, cuda_id=0)
-    trainer.set_model('controlnet',
-                      controlnet,
-                      cuda_id=0,
-                      enable_accelerate_prepare=True)
-    trainer.set_model('noise_scheduler', noise_scheduler, cuda_id=None)
 
     # Criterion
     criterion = torch.nn.MSELoss()
@@ -152,7 +153,6 @@ def build_trainer(cfg):
     optimizer = torch.optim.AdamW(params_to_optimize,
                                   lr=cfg.train.lr,
                                   **cfg.optimizer.kwargs)
-    trainer.set_optimizer(optimizer)
 
     # lr_scheduler
     lr_scheduler = build_lr_scheduler('MultiStepLR',
@@ -160,6 +160,21 @@ def build_trainer(cfg):
                                       max_epoch=cfg.train.max_epoch,
                                       milestones=[120, 200, 260],
                                       gamma=0.1)
+
+    if cfg.accelerate.enable:
+        controlnet, train_dataloader, optimizer, lr_scheduler = accelerator.prepare(
+            controlnet, train_dataloader, optimizer, lr_scheduler)
+
+    trainer.set_train_dataloder(train_dataloader)
+    trainer.set_model('text_encoder', text_encoder, cuda_id=0)
+    trainer.set_model('vae', vae, cuda_id=0)
+    trainer.set_model('unet', unet, cuda_id=0)
+    trainer.set_model('controlnet',
+                      controlnet,
+                      cuda_id=0,
+                      enable_accelerate_prepare=True)
+    trainer.set_model('noise_scheduler', noise_scheduler, cuda_id=None)
+    trainer.set_optimizer(optimizer)
     trainer.set_lr_scheduler(lr_scheduler)
 
     # Hooks

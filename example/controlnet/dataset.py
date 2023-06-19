@@ -10,9 +10,10 @@ from omegaconf import OmegaConf
 class FusingFill50kDataset(torch.utils.data.Dataset):
     def __init__(self, mode, cache_dir=None, tokenizer=None, transform=None):
         self.mode = mode
-        self.data = datasets.load_dataset(
-            'fusing/fill50k',
-            cache_dir='/home/hejing/data/opensource/huggingface/data')['train']
+        print(cache_dir)
+        # self.data = datasets.load_dataset('fusing/fill50k',
+        #                                   cache_dir=cache_dir)['train']
+        self.data = datasets.load_from_disk(cache_dir)['train']
         self.tokenizer = tokenizer
         self.transform = transform
 
