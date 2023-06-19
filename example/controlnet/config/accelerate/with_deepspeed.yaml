@@ -1,6 +1,6 @@
 compute_environment: LOCAL_MACHINE
 deepspeed_config:
-  deepspeed_config_file: ./config/deepspeed.json
+  deepspeed_config_file: ./config/accelerate/deepspeed.json
   zero3_init_flag: true
 distributed_type: DEEPSPEED
 gpu_ids: 5,7
