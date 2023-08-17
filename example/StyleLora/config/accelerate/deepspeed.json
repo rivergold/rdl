@@ -1,0 +1,15 @@
+{
+    "bf16": {
+        "enabled": false
+    },
+    "zero_optimization": {
+        "stage": 2,
+        "stage3_gather_16bit_weights_on_model_save": false,
+        "offload_optimizer": {
+            "device": "none"
+        },
+        "offload_param": {
+            "device": "none"
+        }
+    }
+}

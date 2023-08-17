@@ -1,0 +1,78 @@
+exp_name: facelandmark-with-headpse
+data:
+  train:
+    dataset_name: gw
+    kwargs:
+      root_dir: "/mnt/data/dataset/face_landmark-v2/collect-data"
+      sample_info_map_path: "/mnt/data/dataset/face_landmark-v2/collect-data/sample_list/facelandmark_with_headpose/sample_list-v0.4/train_sample_list.txt"
+      batch_size": 128
+      dataset_type: GwDatasetV2
+      img_type: jpg
+      hdf5_path: "/mnt/data/dataset/face_landmark-v2/collect-data/hdf5/facelandmark_with_headpose-train-v0.4.hdf5"
+      face_landmark_preprocess_mode: "st_with_arc_eye"
+      num_workers: 32
+  val:
+    dataset_name: gw
+    kwargs:
+      root_dir: "/mnt/data/dataset/face_landmark-v2/collect-data"
+      sample_info_map_path: "/mnt/data/dataset/face_landmark-v2/collect-data/sample_list/facelandmark_with_headpose/sample_list-v0.4/val_sample_list.txt"
+      batch_size: 32
+      dataset_type: "GwDatasetV2"
+      img_type: "jpg"
+      face_landmark_preprocess_mode: "st_with_arc_eye"
+  test:
+    - dataset_name: gw
+      kwargs:
+        root_dir: "/mnt/data/dataset/face_landmark-v2/collect-data"
+        sample_info_map_path: "/mnt/data/dataset/face_landmark-v2/collect-data/sample_list/sample_list-v0.3-facelandmark_with_headpose/faceid_all-sample_list-val_sample_list.txt"
+        batch_size: 32
+        dataset_type: "GwDatasetV2"
+        img_type: "jpg"
+        face_landmark_preprocess_mode: "st_with_arc_eye"
+    - dataset_name: gw
+      kwargs:
+        root_dir: "/mnt/data/dataset/face_landmark-v2/collect-data"
+        sample_info_map_path: "/mnt/data/dataset/face_landmark-v2/collect-data/sample_list/sample_list-v0.3-facelandmark_with_headpose/badcase-20221011-yangxi_provide-sample_list-test_sample_list.txt"
+        batch_size: 32
+        dataset_type: "GwDatasetV2"
+        img_type: "jpg"
+        face_landmark_preprocess_mode: "st_with_arc_eye"
+model:
+  model_name: "HjFacelandmarkWithHeadposeTwoBranchWithWeightNorm"
+  kwargs:
+    lmk_num_classes: 200
+    hp_num_classes: 55
+train:
+  img_size: [256, 256]
+  enable_val: true
+  enable_test: true
+  max_epoch: 500
+  lr": 0.0005
+  lr_scheduler:
+    name": "MultiStepLR"
+    params":
+      milestones: [150, 300, 350]
+      gamma: 0.1
+  pretrained_checkpoint: null
+  resume_from: null
+loss:
+  landmark:
+    loss_name: "wing_loss"
+    kwargs:
+      w: 10
+      epsilon: 2
+  headpose:
+    loss_name: "headpose_lossv2"
+    kwargs:
+      weight: 0.1
+      alpha: 10.0
+      label_smoothing: 0
+  weight_decay: 0
+aug:
+  - type: WholeImgMixup
+    kwargs:
+      p_threshold: 0.3
+      mixup_alpha_range: [0, 0.4]
+  - type: BboxAroundCropV2
+    kwargs:
+      expand_ratio_range: [1.0, 1.5]
